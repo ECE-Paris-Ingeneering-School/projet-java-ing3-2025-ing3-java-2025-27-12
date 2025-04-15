@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Hôte : 127.0.0.1:3306
--- Généré le : jeu. 03 avr. 2025 à 08:15
+-- Généré le : mar. 15 avr. 2025 à 07:18
 -- Version du serveur : 8.2.0
 -- Version de PHP : 8.2.13
 
@@ -24,78 +24,6 @@ SET time_zone = "+00:00";
 -- --------------------------------------------------------
 
 --
--- Structure de la table `lieu`
---
-
-DROP TABLE IF EXISTS `lieu`;
-CREATE TABLE IF NOT EXISTS `lieu` (
-  `id_lieu` int NOT NULL AUTO_INCREMENT,
-  `nom_lieu` varchar(100) NOT NULL,
-  `adresse` varchar(255) NOT NULL,
-  PRIMARY KEY (`id_lieu`)
-) ENGINE=MyISAM AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
---
--- Déchargement des données de la table `lieu`
---
-
-INSERT INTO `lieu` (`id_lieu`, `nom_lieu`, `adresse`) VALUES
-(1, 'Hôpital Saint-Louis', '123 Rue de Paris, Paris'),
-(2, 'Clinique Montparnasse', '456 Rue de Lyon, Lyon');
-
--- --------------------------------------------------------
-
---
--- Structure de la table `rendezvous`
---
-
-DROP TABLE IF EXISTS `rendezvous`;
-CREATE TABLE IF NOT EXISTS `rendezvous` (
-  `id_rdv` int NOT NULL AUTO_INCREMENT,
-  `date_heure` datetime NOT NULL,
-  `id_patient` int DEFAULT NULL,
-  `id_specialiste` int DEFAULT NULL,
-  `id_lieu` int DEFAULT NULL,
-  `note_patient` text,
-  PRIMARY KEY (`id_rdv`),
-  KEY `id_patient` (`id_patient`),
-  KEY `id_specialiste` (`id_specialiste`),
-  KEY `id_lieu` (`id_lieu`)
-) ENGINE=MyISAM AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
---
--- Déchargement des données de la table `rendezvous`
---
-
-INSERT INTO `rendezvous` (`id_rdv`, `date_heure`, `id_patient`, `id_specialiste`, `id_lieu`, `note_patient`) VALUES
-(1, '2025-04-10 09:00:00', 1, 1, 1, 'Très bon rendez-vous, le spécialiste était très clair.'),
-(2, '2025-04-12 14:30:00', 2, 2, 2, 'Rendez-vous rapide et efficace.');
-
--- --------------------------------------------------------
-
---
--- Structure de la table `specialiste_lieu`
---
-
-DROP TABLE IF EXISTS `specialiste_lieu`;
-CREATE TABLE IF NOT EXISTS `specialiste_lieu` (
-  `id_specialiste` int NOT NULL,
-  `id_lieu` int NOT NULL,
-  PRIMARY KEY (`id_specialiste`,`id_lieu`),
-  KEY `id_lieu` (`id_lieu`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
---
--- Déchargement des données de la table `specialiste_lieu`
---
-
-INSERT INTO `specialiste_lieu` (`id_specialiste`, `id_lieu`) VALUES
-(1, 1),
-(2, 2);
-
--- --------------------------------------------------------
-
---
 -- Structure de la table `utilisateur`
 --
 
@@ -110,7 +38,7 @@ CREATE TABLE IF NOT EXISTS `utilisateur` (
   `specialisation` varchar(100) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `email` (`email`)
-) ENGINE=MyISAM AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=MyISAM AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
 -- Déchargement des données de la table `utilisateur`
@@ -119,7 +47,14 @@ CREATE TABLE IF NOT EXISTS `utilisateur` (
 INSERT INTO `utilisateur` (`id`, `nom`, `prenom`, `email`, `mot_de_passe`, `role`, `specialisation`) VALUES
 (1, 'Leclerc', 'Stanislas', 'Stan@gmail.com', 'azerty', 'specialiste', 'Maths'),
 (2, 'Test', 'TEst', 'test', 'Test', 'patient', NULL),
-(3, 'A', 'B', 'A', 'B', 'admin', NULL);
+(3, 'A', 'B', 'A', 'B', 'admin', NULL),
+(4, '', '', '', '', 'patient', NULL),
+(5, 'Dupont', 'Marie', 'marie.dupont@med.fr', 'pwd', 'specialiste', 'Cardiologue'),
+(6, 'Martin', 'Lucie', 'lucie.martin@exemple.fr', 'pwd', 'patient', NULL),
+(7, 'Désiré', 'Doué', 'DD@gmail.com', 'azerty', 'specialiste', 'LDC'),
+(8, 'Michelle', 'LeBlé', 'ML@gmail.com', 'ML', 'specialiste', 'Cardiologue'),
+(9, 's', 's', 's', 's', 'patient', NULL),
+(10, 'Stanislas', 'Leclerc', 'S@gmail.com', 'azerty', 'admin', NULL);
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
