@@ -1,14 +1,12 @@
-import javafx.application.Application;
-import javafx.geometry.*;
-import javafx.scene.Scene;
-import javafx.scene.control.*;
-import javafx.scene.layout.*;
-import javafx.scene.paint.Color;
-import javafx.scene.text.*;
-import javafx.stage.Stage;
-// Main.java
+import javax.swing.*;
+import javax.swing.*;
+import java.awt.*;
+import java.sql.*;
 public class MainFrameJavaFX {
     public static void main(String[] args) {
-        javax.swing.SwingUtilities.invokeLater(() -> new FenetreConnexion());
+
+
+        SwingUtilities.invokeLater(FenetreAccueil::new);
+//        javax.swing.SwingUtilities.invokeLater(() -> new FenetreConnexion());
     }
 }

@@ -26,6 +26,14 @@ public class FenetreConnexion extends JFrame {
         btnConnexion.setBackground(new Color(46, 139, 87));
         btnConnexion.setForeground(Color.WHITE);
 
+        JButton btnAnnuler = new JButton("Annuler");
+        btnAnnuler.setBackground(new Color(205, 92, 92));
+        btnAnnuler.setForeground(Color.WHITE);
+        btnAnnuler.addActionListener(e -> {
+            dispose();
+            new FenetreAccueil();
+        });
+
         JButton btnVersInscription = new JButton("Pas encore de compte ? Créer un compte");
         btnVersInscription.setForeground(Color.BLUE);
         btnVersInscription.setBorderPainted(false);
@@ -49,8 +57,9 @@ public class FenetreConnexion extends JFrame {
                     String role = rs.getString("role");
                     String email = rs.getString("email");
                     String specialisation = rs.getString("specialisation");
+                    int idUtilisateur = rs.getInt("id");
                     dispose();
-                    new FenetreProfil(nom, prenom, email, role, specialisation);
+                    new FenetrePrincipale(nom, prenom, email, role, specialisation, idUtilisateur);
                 } else {
                     JOptionPane.showMessageDialog(this, "Email ou mot de passe incorrect.");
                 }
@@ -60,9 +69,12 @@ public class FenetreConnexion extends JFrame {
             }
         });
 
-        formPanel.add(new JLabel("Email :")); formPanel.add(tfEmail);
-        formPanel.add(new JLabel("Mot de passe :")); formPanel.add(tfPassword);
-        formPanel.add(new JLabel("")); formPanel.add(btnConnexion);
+        formPanel.add(new JLabel("Email :"));
+        formPanel.add(tfEmail);
+        formPanel.add(new JLabel("Mot de passe :"));
+        formPanel.add(tfPassword);
+        formPanel.add(btnAnnuler);
+        formPanel.add(btnConnexion);
 
         add(titre, BorderLayout.NORTH);
         add(formPanel, BorderLayout.CENTER);

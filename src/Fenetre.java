@@ -6,7 +6,7 @@ import java.awt.*;
 public class Fenetre extends JFrame {
     public Fenetre() {
         setTitle("Accueil");
-        setSize(300, 200);
+        setSize(1400, 1000);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 

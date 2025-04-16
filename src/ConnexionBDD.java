@@ -1,5 +1,8 @@
 // ConnexionBDD.java
 // ConnexionBDD.java
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.sql.*;
 
 public class ConnexionBDD {
@@ -11,3 +14,4 @@ public class ConnexionBDD {
         return DriverManager.getConnection(URL, USER, PASSWORD);
     }
 }
+
