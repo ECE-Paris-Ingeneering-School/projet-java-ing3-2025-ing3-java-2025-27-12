@@ -63,5 +63,19 @@ WHERE c.id_specialiste = ?
 
         return liste;
     }
+    public List<String> getSpecialitesDisponibles() throws SQLException {
+        List<String> specialites = new ArrayList<>();
+        String sql = "SELECT DISTINCT specialisation FROM utilisateur WHERE role = 'specialiste' AND specialisation IS NOT NULL";
+
+        try (PreparedStatement stmt = connection.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) {
+                specialites.add(rs.getString("specialisation"));
+            }
+        }
+
+        return specialites;
+    }
+
 
 }
