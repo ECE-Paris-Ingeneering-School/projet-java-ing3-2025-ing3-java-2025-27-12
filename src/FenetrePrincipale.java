@@ -5,17 +5,25 @@ import java.awt.event.ActionListener;
 import java.net.URI;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.TextStyle;
+import java.util.*;
+import java.sql.PreparedStatement;
+import java.sql.Connection;
+import java.sql.ResultSet;
 import java.util.List;
-import java.util.Map;
-
-import java.util.HashMap;
+import java.util.stream.Collectors;
+import java.time.format.DateTimeFormatter;
 
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.data.category.DefaultCategoryDataset;
+import Modele.Avis;
 
  // Remplace `your.package.name` par le vrai package
 
@@ -24,6 +32,14 @@ public class FenetrePrincipale extends JFrame {
     private CardLayout cardLayout;
     private JPanel mainPanel;
     private int idUtilisateurConnecte;
+    private JPanel creneauPanel;
+   // private int semaineAffichee = 0;
+    private CreneauDAO creneauDAO;
+    private LocalDate semaineAffichee = LocalDate.now();
+    // commence au lundi de la semaine
+   // private JComboBox<Utilisateur> comboSpecialistes;
+
+
 
     private String roleUtilisateurConnecte;
 
@@ -36,6 +52,9 @@ public class FenetrePrincipale extends JFrame {
         setSize(800, 500);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
+
+
+
 
         // === Barre de menu ===
         JMenuBar menuBar = new JMenuBar();
@@ -230,24 +249,41 @@ private JPanel createInfosPanel() {
     return panel;
 }
 
+
+
     private JPanel createPrendreRDVPanel() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(new Color(255, 250, 240));
 
+        // === Panel navigation (boutons) ===
+        JPanel navigation = new JPanel(new FlowLayout());
+        JButton btnSemainePrecedente = new JButton("← Semaine précédente");
+        JButton btnSemaineSuivante = new JButton("Semaine suivante →");
+        navigation.add(btnSemainePrecedente);
+        navigation.add(btnSemaineSuivante);
+
+        // === Titre au-dessus ===
+        JPanel header = new JPanel(new BorderLayout());
         JLabel titre = new JLabel("📅 Prise de rendez-vous", SwingConstants.CENTER);
         titre.setFont(new Font("Arial", Font.BOLD, 18));
-        panel.add(titre, BorderLayout.NORTH);
+        header.add(titre, BorderLayout.NORTH);
+        header.add(navigation, BorderLayout.SOUTH);
 
-        // === Panel qui affichera les créneaux ===
-        JPanel creneauPanel = new JPanel();
+        panel.add(header, BorderLayout.NORTH);  // ✅ ajoute le header complet
+
+        // === Panel des créneaux ===
+        creneauPanel = new JPanel();
         panel.add(new JScrollPane(creneauPanel), BorderLayout.CENTER);
+
+        // === Bas du panel : combo + graphes
+        JPanel basPanel = new JPanel();
+        basPanel.setLayout(new BoxLayout(basPanel, BoxLayout.Y_AXIS));
 
         try {
             Connection conn = ConnexionBDD.getConnexion();
-            CreneauDAO creneauDAO = new CreneauDAO(conn);
+            creneauDAO = new CreneauDAO(conn);
             UtilisateurDAO userDao = new UtilisateurDAO(conn);
 
-            // === ComboBox des spécialistes ===
             comboSpecialistes = new JComboBox<>();
             for (Utilisateur u : userDao.getSpecialistes()) {
                 comboSpecialistes.addItem(u);
@@ -256,18 +292,27 @@ private JPanel createInfosPanel() {
             comboSpecialistes.addActionListener(e -> {
                 Utilisateur selected = (Utilisateur) comboSpecialistes.getSelectedItem();
                 if (selected != null) {
-                    // Génère les créneaux (si non encore présents)
-                    creneauDAO.genererCreneauxSiManquants(selected.getId());
-                    // Affiche les créneaux du spécialiste sélectionné
-                    afficherCreneaux(selected.getId(), creneauPanel, creneauDAO);
+                    creneauDAO.genererCreneauxMoisCompletSiManquants(selected.getId());
+                    afficherCreneauxSurUneSemaine(selected.getId(), creneauPanel, creneauDAO);
                 }
             });
 
-            panel.add(comboSpecialistes, BorderLayout.SOUTH);
+            basPanel.add(comboSpecialistes);
 
             if (roleUtilisateurConnecte.equalsIgnoreCase("admin")) {
-                panel.add(Box.createVerticalStrut(20));
-                panel.add(createGraphiqueOccupationPanel());
+                basPanel.add(Box.createVerticalStrut(20));
+                basPanel.add(createGraphiqueOccupationPanel());
+                basPanel.add(Box.createVerticalStrut(10));
+                basPanel.add(createGraphiqueIndividuelPanel()); // si cette méthode existe
+            }
+
+            panel.add(basPanel, BorderLayout.SOUTH);
+
+            // ✅ Affichage initial dès ouverture
+            if (comboSpecialistes.getItemCount() > 0) {
+                Utilisateur selected = (Utilisateur) comboSpecialistes.getItemAt(0);
+                creneauDAO.genererCreneauxMoisCompletSiManquants(selected.getId());
+                afficherCreneauxSurUneSemaine(selected.getId(), creneauPanel, creneauDAO);
             }
 
         } catch (SQLException ex) {
@@ -275,8 +320,29 @@ private JPanel createInfosPanel() {
             panel.add(new JLabel("Erreur de chargement des spécialistes."), BorderLayout.CENTER);
         }
 
+        // === Listeners navigation ===
+        btnSemainePrecedente.addActionListener(e -> {
+            semaineAffichee = semaineAffichee.minusWeeks(1);
+            Utilisateur selected = (Utilisateur) comboSpecialistes.getSelectedItem();
+            if (selected != null) {
+                afficherCreneauxSurUneSemaine(selected.getId(), creneauPanel, creneauDAO);
+            }
+        });
+
+        btnSemaineSuivante.addActionListener(e -> {
+            semaineAffichee = semaineAffichee.plusWeeks(1);
+            Utilisateur selected = (Utilisateur) comboSpecialistes.getSelectedItem();
+            if (selected != null) {
+                afficherCreneauxSurUneSemaine(selected.getId(), creneauPanel, creneauDAO);
+            }
+        });
+
         return panel;
     }
+
+
+
+
     private void afficherCreneaux(int idSpecialiste, JPanel cible, CreneauDAO creneauDAO) {
         cible.removeAll();
         cible.setLayout(new GridLayout(5, 5, 10, 10)); // 5 jours × 5 créneaux
@@ -319,30 +385,123 @@ private JPanel createInfosPanel() {
         panel.add(new JLabel("Prénom : " + prenom));
         panel.add(new JLabel("Email : " + email));
         panel.add(new JLabel("Rôle : " + role));
-        panel.add(new JLabel("Spécialisation : " + (role.equals("specialiste") ? specialisation : "N/A")));
+        panel.add(new JLabel("Spécialisation : " + (role.equalsIgnoreCase("specialiste") ? specialisation : "N/A")));
 
         panel.add(Box.createVerticalStrut(20));
 
+        // === Bouton de déconnexion ===
         JButton deconnexionBtn = new JButton("Déconnexion");
         deconnexionBtn.setAlignmentX(Component.CENTER_ALIGNMENT);
         deconnexionBtn.addActionListener(e -> {
             int confirm = JOptionPane.showConfirmDialog(null, "Voulez-vous vous déconnecter ?", "Confirmation", JOptionPane.YES_NO_OPTION);
             if (confirm == JOptionPane.YES_OPTION) {
                 dispose(); // Ferme la fenêtre actuelle
-                new FenetreAccueil(); // Ouvre la fenêtre de connexion
+                new FenetreAccueil(); // Retour accueil
             }
         });
-        panel.add(deconnexionBtn);
+
+        // === Bouton d’ajout de spécialiste (visible uniquement pour admin) ===
+        if ("admin".equalsIgnoreCase(role)) {
+            JButton btnAjouterSpecialiste = new JButton("Ajouter un spécialiste");
+            btnAjouterSpecialiste.setAlignmentX(Component.CENTER_ALIGNMENT);
+            btnAjouterSpecialiste.addActionListener(e -> {
+                JFrame ajoutFrame = new JFrame("Ajouter un spécialiste");
+                ajoutFrame.setSize(400, 350);
+                ajoutFrame.setLocationRelativeTo(null);
+                ajoutFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+
+                JPanel form = new JPanel();
+                form.setLayout(new BoxLayout(form, BoxLayout.Y_AXIS));
+                form.setBorder(BorderFactory.createEmptyBorder(20, 30, 20, 30));
+
+                JTextField tfNom = new JTextField();
+                JTextField tfPrenom = new JTextField();
+                JTextField tfEmail = new JTextField();
+                JTextField tfSpecialisation = new JTextField();
+                JPasswordField tfMdp = new JPasswordField();
+                JTextField tfRue = new JTextField();
+                JTextField tfVille = new JTextField();
+
+
+                form.add(new JLabel("Nom :")); form.add(tfNom);
+                form.add(new JLabel("Prénom :")); form.add(tfPrenom);
+                form.add(new JLabel("Email :")); form.add(tfEmail);
+                form.add(new JLabel("Spécialisation :")); form.add(tfSpecialisation);
+                form.add(new JLabel("Mot de passe :")); form.add(tfMdp);
+                form.add(new JLabel("Rue :")); form.add(tfRue);
+                form.add(new JLabel("Ville :")); form.add(tfVille);
 
 
 
+                JButton btnValider = new JButton("Ajouter");
+                btnValider.addActionListener(evt -> {
+                    String nomSPE = tfNom.getText().trim();
+                    String prenomSPE = tfPrenom.getText().trim();
+                    String emailSPE = tfEmail.getText().trim();
+                    String specialisationSPE = tfSpecialisation.getText().trim();
+                    String rue = tfRue.getText().trim();
+                    String ville = tfVille.getText().trim();
 
+                    String mdp = new String(tfMdp.getPassword());
 
+                    if (nomSPE.isEmpty() || emailSPE.isEmpty() || specialisationSPE.isEmpty() || mdp.isEmpty()) {
+                        JOptionPane.showMessageDialog(ajoutFrame, "Tous les champs sont obligatoires.");
+                        return;
+                    }
 
+                    try {
+                        Connection conn = ConnexionBDD.getConnexion();
 
+                        // Vérifie si l'email est déjà utilisé
+                        String checkSQL = "SELECT COUNT(*) FROM utilisateur WHERE email = ?";
+                        PreparedStatement checkStmt = conn.prepareStatement(checkSQL);
+                        checkStmt.setString(1, emailSPE);
+                        ResultSet rs = checkStmt.executeQuery();
+                        rs.next();
+                        if (rs.getInt(1) > 0) {
+                            JOptionPane.showMessageDialog(ajoutFrame, "Cet email est déjà utilisé.");
+                            return;
+                        }
+
+                        // Insertion du spécialiste
+                        String sql = "INSERT INTO utilisateur (nom, prenom, email, specialisation, rue, ville, mot_de_passe, role) VALUES (?, ?, ?, ?, ?, ?, ?, 'specialiste')";
+
+                        PreparedStatement ps = conn.prepareStatement(sql);
+                        ps.setString(1, nomSPE);
+                        ps.setString(2, prenomSPE);
+                        ps.setString(3, emailSPE);
+                        ps.setString(4, specialisationSPE);
+                        ps.setString(5, rue);
+                        ps.setString(6, ville);
+                        ps.setString(7, mdp);
+
+                        ps.executeUpdate();
+
+                        JOptionPane.showMessageDialog(ajoutFrame, "Spécialiste ajouté !");
+                        ajoutFrame.dispose();
+
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                        JOptionPane.showMessageDialog(ajoutFrame, "Erreur lors de l'ajout du spécialiste.");
+                    }
+                });
+
+                form.add(Box.createVerticalStrut(15));
+                form.add(btnValider);
+
+                ajoutFrame.add(form);
+                ajoutFrame.setVisible(true);
+            });
+
+            panel.add(Box.createVerticalStrut(20));
+            panel.add(btnAjouterSpecialiste);
+        }
+
+        panel.add(Box.createVerticalStrut(15));
         panel.add(deconnexionBtn);
         return panel;
     }
+
     private JPanel createRecherchePanel() {
         // Si l'utilisateur est un patient → il cherche des créneaux disponibles
         if (roleUtilisateurConnecte.equalsIgnoreCase("patient")) {
@@ -484,8 +643,19 @@ private JPanel createInfosPanel() {
         JPanel formPanel = new JPanel(new FlowLayout());
 
         JLabel specialiteLabel = new JLabel("Spécialité :");
-        String[] specialites = { "Cardiologue", "Dermatologue", "Pédiatre", "Psychologue", "Gastro-entérologue" };
-        JComboBox<String> specialiteBox = new JComboBox<>(specialites);
+        JComboBox<String> specialiteBox = new JComboBox<>();
+        try {
+            Connection conn = ConnexionBDD.getConnexion();
+            UtilisateurDAO dao = new UtilisateurDAO(conn);
+            List<String> specialites = dao.getSpecialitesDisponibles();
+            for (String s : specialites) {
+                specialiteBox.addItem(s);
+            }
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+            specialiteBox.addItem("Aucune spécialité trouvée");
+        }
+
 
         JLabel dateLabel = new JLabel("Date (aaaa-mm-jj) :");
         JTextField dateField = new JTextField(10);
@@ -570,34 +740,77 @@ private JPanel createInfosPanel() {
         JLabel titre = new JLabel("📆 Mes rendez-vous");
         titre.setFont(new Font("Arial", Font.BOLD, 18));
         titre.setAlignmentX(Component.CENTER_ALIGNMENT);
-
         panel.add(Box.createVerticalStrut(20));
         panel.add(titre);
         panel.add(Box.createVerticalStrut(10));
 
-        try {
-            Connection conn = ConnexionBDD.getConnexion();
-            CreneauDAO creneauDAO = new CreneauDAO(conn);
+        JPanel btnPanel = new JPanel(new FlowLayout());
+        JButton btnFuturs = new JButton("📅 À venir");
+        JButton btnPasses = new JButton("📜 Passés");
+        btnPanel.add(btnFuturs);
+        btnPanel.add(btnPasses);
+        panel.add(btnPanel);
 
-            List<String> rdvs = creneauDAO.getRendezVousPourUtilisateur(idUtilisateurConnecte, roleUtilisateurConnecte); // utilise "role"
+        JPanel resultPanel = new JPanel();
+        resultPanel.setLayout(new BoxLayout(resultPanel, BoxLayout.Y_AXIS));
+        JScrollPane scrollPane = new JScrollPane(resultPanel);
+        panel.add(scrollPane);
 
-            if (rdvs.isEmpty()) {
-                panel.add(new JLabel("Aucun rendez-vous trouvé."));
-            } else {
-                for (String rdv : rdvs) {
-                    JLabel label = new JLabel(rdv);
-                    label.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
-                    panel.add(label);
+        ActionListener refresh = (e) -> {
+            resultPanel.removeAll();
+            boolean afficherAVenir = (e.getSource() == btnFuturs);
+
+            try {
+                Connection conn = ConnexionBDD.getConnexion();
+                CreneauDAO dao = new CreneauDAO(conn);
+
+                // On suppose que la méthode renvoie Map<idRdv, texte>
+                Map<Integer, String> rdvs = dao.getRendezVousPourUtilisateurAvecId(idUtilisateurConnecte, roleUtilisateurConnecte, afficherAVenir);
+
+                if (rdvs.isEmpty()) {
+                    resultPanel.add(new JLabel("Aucun rendez-vous " + (afficherAVenir ? "à venir." : "passé.")));
+                } else {
+                    for (Map.Entry<Integer, String> entry : rdvs.entrySet()) {
+                        int idRdv = entry.getKey();
+                        String texte = entry.getValue();
+
+                        if (afficherAVenir) {
+                            resultPanel.add(new JLabel("• " + texte));
+                        } else {
+                            Avis avis = dao.getAvisPourRendezVous(idRdv);
+                            if (avis == null) {
+                                JButton btn = new JButton("📝 Noter : " + texte);
+                                btn.addActionListener(ev -> afficherPopupEvaluation(idRdv, texte, null));
+                                resultPanel.add(btn);
+                            } else {
+                                JButton btn = new JButton("🟢 Modifier mon avis : " + texte);
+                                btn.addActionListener(ev -> afficherPopupEvaluation(idRdv, texte, avis));
+                                resultPanel.add(btn);
+                            }
+
+                        }
+                    }
                 }
+
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                resultPanel.add(new JLabel("Erreur de chargement."));
             }
 
-        } catch (SQLException e) {
-            e.printStackTrace();
-            panel.add(new JLabel("Erreur lors du chargement des rendez-vous."));
-        }
+            resultPanel.revalidate();
+            resultPanel.repaint();
+        };
+
+        btnFuturs.addActionListener(refresh);
+        btnPasses.addActionListener(refresh);
+
+        // Chargement par défaut
+        btnFuturs.doClick();
 
         return panel;
     }
+
+
 
     private JPanel createGraphiqueOccupationPanel() {
         JPanel panel = new JPanel();
@@ -659,6 +872,207 @@ private JPanel createInfosPanel() {
 
         return panel;
     }
+
+    private JPanel createGraphiqueIndividuelPanel() {
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+
+        JLabel titre = new JLabel("📊 Statistiques individuelles");
+        titre.setFont(new Font("Arial", Font.BOLD, 16));
+        titre.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        JComboBox<Utilisateur> comboBox = new JComboBox<>();
+        JPanel graphiquePanel = new JPanel(new BorderLayout());
+
+        try {
+            Connection conn = ConnexionBDD.getConnexion();
+            UtilisateurDAO dao = new UtilisateurDAO(conn);
+            List<Utilisateur> specialistes = dao.getSpecialistes();
+            for (Utilisateur s : specialistes) {
+                comboBox.addItem(s);
+            }
+        } catch (SQLException e) {
+            new Utilisateur(
+                    0,          // id
+                    "Erreur",   // nom
+                    "",         // prénom
+                    "",         // email
+                    "specialiste", // rôle
+                    "",         // spécialisation
+                    "",         // ville
+                    ""          // rue
+            );
+
+            e.printStackTrace();
+        }
+
+        comboBox.addActionListener(e -> {
+            graphiquePanel.removeAll();
+
+            Utilisateur selected = (Utilisateur) comboBox.getSelectedItem();
+            if (selected != null) {
+                try {
+                    Connection conn = ConnexionBDD.getConnexion();
+                    CreneauDAO dao = new CreneauDAO(conn);
+                    Integer[] stats = dao.getOccupationPourSpecialiste(selected.getId());
+
+                    DefaultCategoryDataset dataset = new DefaultCategoryDataset();
+                    dataset.addValue(stats[0], "Disponibles", selected.getNom());
+                    dataset.addValue(stats[1], "Réservés", selected.getNom());
+
+                    JFreeChart chart = ChartFactory.createBarChart(
+                            "Occupation de " + selected.getPrenom() + " " + selected.getNom(),
+                            "Statut", "Nombre de créneaux",
+                            dataset,
+                            PlotOrientation.VERTICAL,
+                            true, true, false
+                    );
+
+                    ChartPanel chartPanel = new ChartPanel(chart);
+                    graphiquePanel.add(chartPanel, BorderLayout.CENTER);
+                    graphiquePanel.revalidate();
+                    graphiquePanel.repaint();
+
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                    graphiquePanel.add(new JLabel("Erreur de chargement du graphique."));
+                }
+            }
+        });
+
+        panel.add(Box.createVerticalStrut(10));
+        panel.add(titre);
+        panel.add(Box.createVerticalStrut(10));
+        panel.add(comboBox);
+        panel.add(Box.createVerticalStrut(15));
+        panel.add(graphiquePanel);
+
+        return panel;
+    }
+    private void afficherCreneauxSurUneSemaine(int idSpecialiste, JPanel cible, CreneauDAO dao) {
+        cible.removeAll();
+        cible.setLayout(new GridLayout(6, 5, 10, 10)); // 1 ligne pour titres + 5 lignes de créneaux
+
+        LocalDate lundi = semaineAffichee.with(DayOfWeek.MONDAY);
+        LocalDateTime maintenant = LocalDateTime.now();
+        DateTimeFormatter heureFormatter = DateTimeFormatter.ofPattern("HH:mm");
+
+        // === Ligne de titres (jours de la semaine)
+        for (int i = 0; i < 5; i++) {
+            LocalDate jour = lundi.plusDays(i);
+            String nomJour = jour.getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.FRENCH);
+            JLabel labelJour = new JLabel(nomJour + " " + jour, SwingConstants.CENTER);
+            labelJour.setFont(new Font("SansSerif", Font.BOLD, 14));
+            cible.add(labelJour);
+        }
+
+        // === 5 lignes de créneaux (max par jour)
+        for (int ligne = 0; ligne < 5; ligne++) {
+            for (int jour = 0; jour < 5; jour++) {
+                LocalDate currentDay = lundi.plusDays(jour);
+                List<Creneau> creneauxJour = dao.getCreneauxPourJour(idSpecialiste, currentDay)
+                        .stream()
+                        .filter(c -> !c.getDateHeure().isBefore(maintenant)) // exclude past
+                        .sorted(Comparator.comparing(Creneau::getDateHeure))
+                        .collect(Collectors.toList());
+
+                if (ligne < creneauxJour.size()) {
+                    Creneau c = creneauxJour.get(ligne);
+                    JButton btn = new JButton(c.getDateHeure().toLocalTime().format(heureFormatter));
+                    btn.setBackground(c.isDisponible() ? Color.GREEN : Color.RED);
+                    btn.setEnabled(c.isDisponible());
+
+                    btn.addActionListener(e -> {
+                        int confirm = JOptionPane.showConfirmDialog(null, "Confirmer ce rendez-vous ?");
+                        if (confirm == JOptionPane.YES_OPTION) {
+                            dao.reserverCreneau(c.getId(), idUtilisateurConnecte);
+                            afficherCreneauxSurUneSemaine(idSpecialiste, cible, dao);
+                        }
+                    });
+
+                    cible.add(btn);
+                } else {
+                    cible.add(new JLabel("")); // case vide
+                }
+            }
+        }
+
+        cible.revalidate();
+        cible.repaint();
+    }
+
+
+    private void afficherPopupEvaluation(int idRdv, String description, Avis avis) {
+        JFrame frame = new JFrame("Avis sur le rendez-vous");
+        frame.setSize(400, 300);
+        frame.setLocationRelativeTo(null);
+
+        JPanel panel = new JPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+
+        JLabel rdvLabel = new JLabel("📅 " + description);
+        rdvLabel.setFont(new Font("Arial", Font.BOLD, 14));
+
+        JComboBox<Integer> noteBox = new JComboBox<>(new Integer[]{1,2,3,4,5});
+        JTextArea commentaire = new JTextArea(4, 20);
+        commentaire.setLineWrap(true);
+        commentaire.setWrapStyleWord(true);
+
+        if (avis != null) {
+            noteBox.setSelectedItem(avis.getNote());
+            commentaire.setText(avis.getCommentaire());
+        }
+
+        JButton valider = new JButton((avis == null) ? "Envoyer" : "Modifier");
+
+        valider.addActionListener(e -> {
+            int note = (int) noteBox.getSelectedItem();
+            String texte = commentaire.getText().trim();
+
+            try {
+                Connection conn = ConnexionBDD.getConnexion();
+                PreparedStatement ps;
+                if (avis == null) {
+                    ps = conn.prepareStatement("INSERT INTO avis (id_rendez_vous, note, commentaire) VALUES (?, ?, ?)");
+                } else {
+                    ps = conn.prepareStatement("UPDATE avis SET note = ?, commentaire = ? WHERE id_rendez_vous = ?");
+                }
+
+                if (avis == null) {
+                    ps.setInt(1, idRdv);
+                    ps.setInt(2, note);
+                    ps.setString(3, texte);
+                } else {
+                    ps.setInt(1, note);
+                    ps.setString(2, texte);
+                    ps.setInt(3, idRdv);
+                }
+
+                ps.executeUpdate();
+                JOptionPane.showMessageDialog(frame, "Avis enregistré !");
+                frame.dispose();
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                JOptionPane.showMessageDialog(frame, "Erreur lors de l'enregistrement.");
+            }
+        });
+
+        panel.add(rdvLabel);
+        panel.add(Box.createVerticalStrut(10));
+        panel.add(new JLabel("Note :"));
+        panel.add(noteBox);
+        panel.add(Box.createVerticalStrut(10));
+        panel.add(new JLabel("Commentaire :"));
+        panel.add(new JScrollPane(commentaire));
+        panel.add(Box.createVerticalStrut(10));
+        panel.add(valider);
+
+        frame.add(panel);
+        frame.setVisible(true);
+    }
+
+
 
 
 
