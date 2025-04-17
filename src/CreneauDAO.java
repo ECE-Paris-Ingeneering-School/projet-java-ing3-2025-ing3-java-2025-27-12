@@ -1,11 +1,10 @@
 import java.sql.*;
+import java.sql.Date;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import Modele.Avis;
 
 public class CreneauDAO {
 
@@ -238,10 +237,9 @@ public class CreneauDAO {
     }
     public List<String> getRendezVousPourUtilisateur(int idUtilisateur, String role) {
         List<String> liste = new ArrayList<>();
-        String sql = "";
+        String sql;
 
         if (role.equalsIgnoreCase("patient")) {
-            // Affiche les rdv pris par le patient avec un spécialiste
             sql = """
             SELECT c.date_heure, u.nom, u.prenom, u.specialisation
             FROM rendez_vous r
@@ -251,7 +249,6 @@ public class CreneauDAO {
             ORDER BY c.date_heure
         """;
         } else if (role.equalsIgnoreCase("specialiste")) {
-            // Affiche les patients ayant pris un rdv avec ce spécialiste
             sql = """
             SELECT c.date_heure, u.nom, u.prenom
             FROM rendez_vous r
@@ -260,6 +257,9 @@ public class CreneauDAO {
             WHERE c.id_specialiste = ?
             ORDER BY c.date_heure
         """;
+        } else {
+            // rôle non reconnu (admin, ou autre)
+            return liste; // retourne une liste vide sans planter
         }
 
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
@@ -275,7 +275,7 @@ public class CreneauDAO {
                     String prenom = rs.getString("prenom");
                     String specialisation = rs.getString("specialisation");
                     liste.add("📅 " + date + " avec Dr. " + prenom + " " + nom + " (" + specialisation + ")");
-                } else {
+                } else if (role.equalsIgnoreCase("specialiste")) {
                     String nom = rs.getString("nom");
                     String prenom = rs.getString("prenom");
                     liste.add("📅 " + date + " - Patient : " + prenom + " " + nom);
@@ -288,6 +288,7 @@ public class CreneauDAO {
 
         return liste;
     }
+
     public List<String> rechercherCreneaux(String specialite, LocalDate date) {
         List<String> resultats = new ArrayList<>();
 
@@ -439,6 +440,245 @@ public class CreneauDAO {
         return stats;
     }
 
+
+    public Integer[] getOccupationPourSpecialiste(int idSpecialiste) {
+        Integer[] stats = new Integer[2]; // [disponibles, réservés]
+        String sql = "SELECT " +
+                "SUM(CASE WHEN disponible = TRUE THEN 1 ELSE 0 END) AS disponibles, " +
+                "SUM(CASE WHEN disponible = FALSE THEN 1 ELSE 0 END) AS reserves " +
+                "FROM creneau WHERE id_specialiste = ?";
+
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            stmt.setInt(1, idSpecialiste);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    stats[0] = rs.getInt("disponibles");
+                    stats[1] = rs.getInt("reserves");
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return stats;
+    }
+    public void genererCreneauxMoisCompletSiManquants(int idSpecialiste) {
+        LocalDate aujourdHui = LocalDate.now();
+        LocalDate dateFin = aujourdHui.plusWeeks(4); // 1 mois
+
+        for (LocalDate date = aujourdHui; date.isBefore(dateFin); date = date.plusDays(1)) {
+            // seulement lundi à vendredi
+            if (date.getDayOfWeek().getValue() >= 6) continue;
+
+            for (int heure : new int[]{8, 10, 14, 16, 18}) {
+                LocalDateTime creneauHeure = date.atTime(heure, 0);
+                if (!existeCreneau(idSpecialiste, creneauHeure)) {
+                    ajouterCreneau(idSpecialiste, creneauHeure);
+                }
+            }
+        }
+    }
+    private boolean existeCreneau(int idSpecialiste, LocalDateTime dateHeure) {
+        try {
+            String sql = "SELECT COUNT(*) FROM creneau WHERE id_specialiste = ? AND date_heure = ?";
+            PreparedStatement stmt = connection.prepareStatement(sql);
+            stmt.setInt(1, idSpecialiste);
+            stmt.setTimestamp(2, Timestamp.valueOf(dateHeure));
+            ResultSet rs = stmt.executeQuery();
+            return rs.next() && rs.getInt(1) > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    private void ajouterCreneau(int idSpecialiste, LocalDateTime dateHeure) {
+        try {
+            String sql = "INSERT INTO creneau (id_specialiste, date_heure, disponible) VALUES (?, ?, 1)";
+            PreparedStatement stmt = connection.prepareStatement(sql);
+            stmt.setInt(1, idSpecialiste);
+            stmt.setTimestamp(2, Timestamp.valueOf(dateHeure));
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public List<Creneau> getCreneauxPourJour(int idSpecialiste, LocalDate date) {
+        List<Creneau> creneaux = new ArrayList<>();
+
+        String sql = "SELECT * FROM creneau WHERE id_specialiste = ? AND DATE(date_heure) = ? ORDER BY date_heure";
+
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setInt(1, idSpecialiste);
+            ps.setDate(2, java.sql.Date.valueOf(date));
+            ResultSet rs = ps.executeQuery();
+
+            while (rs.next()) {
+                int id = rs.getInt("id");
+                Timestamp dateHeure = rs.getTimestamp("date_heure");
+                boolean dispo = rs.getBoolean("disponible");
+
+                String nom = ""; // ou une valeur récupérée si tu l'as
+                String prenom = "";
+                String specialisation = "";
+
+                creneaux.add(new Creneau(id, idSpecialiste, dateHeure.toLocalDateTime(), dispo, nom, prenom, specialisation));
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return creneaux;
+    }
+    public List<String> getRendezVousPourUtilisateur(int idUtilisateur, String role, boolean aVenir) {
+        List<String> liste = new ArrayList<>();
+        String sql;
+
+        if (role.equalsIgnoreCase("patient")) {
+            sql = """
+            SELECT c.date_heure, u.nom, u.prenom, u.specialisation
+            FROM rendez_vous r
+            JOIN creneau c ON r.id_creneau = c.id
+            JOIN utilisateur u ON c.id_specialiste = u.id
+            WHERE r.id_patient = ?
+            ORDER BY c.date_heure
+        """;
+        } else if (role.equalsIgnoreCase("specialiste")) {
+            sql = """
+            SELECT c.date_heure, u.nom, u.prenom
+            FROM rendez_vous r
+            JOIN creneau c ON r.id_creneau = c.id
+            JOIN utilisateur u ON r.id_patient = u.id
+            WHERE c.id_specialiste = ?
+            ORDER BY c.date_heure
+        """;
+        } else {
+            return liste;
+        }
+
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setInt(1, idUtilisateur);
+            ResultSet rs = ps.executeQuery();
+
+            while (rs.next()) {
+                Timestamp dateHeure = rs.getTimestamp("date_heure");
+                LocalDateTime ldt = dateHeure.toLocalDateTime();
+
+                if (aVenir && ldt.isBefore(LocalDateTime.now())) continue;
+                if (!aVenir && ldt.isAfter(LocalDateTime.now())) continue;
+
+                String ligne;
+
+                if (role.equalsIgnoreCase("patient")) {
+                    String nom = rs.getString("nom");
+                    String prenom = rs.getString("prenom");
+                    String specialisation = rs.getString("specialisation");
+                    ligne = "📅 " + ldt + " avec Dr. " + prenom + " " + nom + " (" + specialisation + ")";
+                } else {
+                    String nom = rs.getString("nom");
+                    String prenom = rs.getString("prenom");
+                    ligne = "📅 " + ldt + " - Patient : " + prenom + " " + nom;
+                }
+
+                liste.add(ligne);
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return liste;
+    }
+    public boolean avisExistePourRendezVous(int idRendezVous) {
+        try (PreparedStatement ps = connection.prepareStatement(
+                "SELECT id FROM avis WHERE id_rendez_vous = ?")) {
+            ps.setInt(1, idRendezVous);
+            ResultSet rs = ps.executeQuery();
+            return rs.next();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+    public void enregistrerAvis(int idRendezVous, int note, String commentaire) {
+        String sql = "INSERT INTO avis (id_rendez_vous, note, commentaire) VALUES (?, ?, ?)";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setInt(1, idRendezVous);
+            ps.setInt(2, note);
+            ps.setString(3, commentaire);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    public Map<Integer, String> getRendezVousPourUtilisateurAvecId(int idUtilisateur, String role, boolean aVenir) {
+        Map<Integer, String> rdvs = new LinkedHashMap<>();
+
+        String conditionTemps = aVenir ? ">= NOW()" : "< NOW()";
+        String sql = "";
+
+        if (role.equalsIgnoreCase("patient")) {
+            sql = """
+            SELECT r.id, c.date_heure, u.nom, u.prenom, u.specialisation
+            FROM rendez_vous r
+            JOIN creneau c ON r.id_creneau = c.id
+            JOIN utilisateur u ON c.id_specialiste = u.id
+            WHERE r.id_patient = ? AND c.date_heure """ + conditionTemps + " ORDER BY c.date_heure";
+        } else if (role.equalsIgnoreCase("specialiste")) {
+            sql = """
+            SELECT r.id, c.date_heure, u.nom, u.prenom
+            FROM rendez_vous r
+            JOIN creneau c ON r.id_creneau = c.id
+            JOIN utilisateur u ON r.id_patient = u.id
+            WHERE c.id_specialiste = ? AND c.date_heure """ + conditionTemps + " ORDER BY c.date_heure";
+        } else {
+            return rdvs;
+        }
+
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setInt(1, idUtilisateur);
+            ResultSet rs = ps.executeQuery();
+
+            while (rs.next()) {
+                int idRdv = rs.getInt("id");
+                String dateHeure = rs.getTimestamp("date_heure").toLocalDateTime().toString();
+
+                if (role.equalsIgnoreCase("patient")) {
+                    String nom = rs.getString("nom");
+                    String prenom = rs.getString("prenom");
+                    String specialisation = rs.getString("specialisation");
+                    rdvs.put(idRdv, dateHeure + " avec Dr. " + prenom + " " + nom + " (" + specialisation + ")");
+                } else {
+                    String nom = rs.getString("nom");
+                    String prenom = rs.getString("prenom");
+                    rdvs.put(idRdv, dateHeure + " - Patient : " + prenom + " " + nom);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return rdvs;
+    }
+    public Avis getAvisPourRendezVous(int idRendezVous) {
+        String sql = "SELECT note, commentaire FROM avis WHERE id_rendez_vous = ?";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setInt(1, idRendezVous);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                int note = rs.getInt("note");
+                String commentaire = rs.getString("commentaire");
+                return new Avis(idRendezVous, note, commentaire);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null; // Aucun avis trouvé
+    }
 
 
 
