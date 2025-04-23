@@ -10,10 +10,11 @@ public class Avis {
         this.note = note;
         this.commentaire = commentaire;
     }
-
+/*
+*
     public int getIdRendezVous() {
         return idRendezVous;
-    }
+    }*/
 
     public int getNote() {
         return note;
