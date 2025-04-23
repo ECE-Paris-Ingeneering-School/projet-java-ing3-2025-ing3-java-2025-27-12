@@ -1,5 +1,5 @@
 import java.sql.*;
-
+/*
 public class Inscription {
 
     public static Connection getConnection() throws SQLException {
@@ -36,5 +36,5 @@ public class Inscription {
             return false;
         }
     }
-}
+}*/
 
