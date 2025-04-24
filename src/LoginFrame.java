@@ -1,8 +1,17 @@
 import javax.swing.*;
 import java.awt.*;
-
+/**
+ * Fenêtre de connexion principale.
+ * Cette classe fournit une interface utilisateur simple pour se connecter avec un email et un mot de passe.
+ * Redirige vers la fenêtre principale si la connexion réussit.
+ *
+ * @author Arthur et Mathis
+ * @version 1.0
+ */
 public class LoginFrame extends JFrame {
-
+    /**
+     * Constructeur qui initialise la fenêtre de connexion.
+     */
     public LoginFrame() {
         setTitle("Connexion");
         setSize(400, 250);
@@ -63,7 +72,11 @@ public class LoginFrame extends JFrame {
 
         add(panel);
     }
-
+    /**
+     * Point d'entrée pour lancer la fenêtre de connexion.
+     *
+     * @param args les arguments de la ligne de commande (non utilisés)
+     */
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             LoginFrame frame = new LoginFrame();

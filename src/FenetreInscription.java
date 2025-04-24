@@ -3,7 +3,22 @@ import java.awt.*;
 
 import java.sql.*;
 
+
+/**
+ * Fenêtre Swing permettant à un nouvel utilisateur de créer un compte.
+ * Cette classe fournit un formulaire d'inscription avec validation des champs.
+ * Le rôle est fixé automatiquement à "patient".
+ *
+ * @author Mathis
+ * @version 1.0
+ */
+
 public class FenetreInscription extends JFrame {
+    /**
+     * Constructeur qui initialise la fenêtre d'inscription.
+     * Crée les composants graphiques, gère les événements de bouton,
+     * et enregistre un utilisateur dans la base de données.
+     */
     public FenetreInscription() {
         setTitle("Inscription");
 

@@ -1,7 +1,25 @@
 
-
-// public classe utilisateur
+/**
+ * Représente un utilisateur de l'application.
+ * Peut être un patient, un spécialiste ou un administrateur.
+ * Contient des informations personnelles et professionnelles.
+ *  * @author Arthur
+ *  * @version 1.0
+*/
 public class Utilisateur {
+    /**
+     * Constructeur principal.
+     *
+     * @param id             Identifiant de l'utilisateur
+     * @param nom            Nom de l'utilisateur
+     * @param prenom         Prénom de l'utilisateur
+     * @param email          Email de l'utilisateur
+     * @param motDePasse     Mot de passe (haché ou clair selon usage)
+     * @param rue            Rue de résidence
+     * @param ville          Ville de résidence
+     * @param specialisation Spécialité (si c'est un spécialiste)
+     * @param role           Rôle : patient, specialiste, ou admin
+     */
     private int id;
     private String nom;
 
@@ -53,7 +71,10 @@ public class Utilisateur {
     public String getVille() { return ville; }
 
     public String getRue() { return rue; }
-
+    /**
+     * Retourne une représentation textuelle de l'utilisateur.
+     * @return une chaîne lisible contenant le nom et l'email
+     */
     @Override
     public String toString() {
         return prenom + " " + nom + " (" + email + ")";

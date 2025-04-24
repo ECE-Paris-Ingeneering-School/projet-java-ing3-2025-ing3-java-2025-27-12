@@ -4,11 +4,23 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 import Modele.Avis;
-
+/**
+ * Classe de type DAO  utilisée pour interagir avec les données liées aux créneaux.
+ * Elle permet d'effectuer des opérations de lecture, écriture et mise à jour sur les rendez-vous médicaux.
+ *
+ * Cette classe s'appuie sur JDBC pour exécuter des requêtes SQL sur les différentes tables.
+ *
+ * @author Paul et Stanislas
+ * @version 1.0
+ */
 public class CreneauDAO {
-
+    /** Connexion JDBC à la base de données */
     private Connection connection;
-
+    /**
+     * Constructeur du DAO.
+     *
+     * @param connection connexion JDBC active
+     */
     public CreneauDAO(Connection connection) {
         this.connection = connection;
     }
@@ -118,6 +130,12 @@ public class CreneauDAO {
 
         return resultats;
     }
+    /**
+     * Annule un rendez-vous existant.
+     *
+     * @param idRendezVous identifiant du rendez-vous à annuler
+     * @throws SQLException si une erreur survient durant la suppression
+     */
     public void         annulerRendezVous(int idRendezVous) throws SQLException {
         String getCreneau = "SELECT id_creneau FROM rendez_vous WHERE id = ?";
 
@@ -161,7 +179,12 @@ public class CreneauDAO {
 
 
     }
-
+    /**
+     * Réserve un créneau pour un patient donné.
+     *
+     * @param idCreneau identifiant du créneau à réserver
+     * @param idPatient identifiant du patient
+     */
 
     public void reserverCreneau(int idCreneau, int idPatient) {
         String insertSQL = "INSERT INTO rendez_vous (id_patient, id_creneau) VALUES (?, ?)";
@@ -367,7 +390,13 @@ public      List<Creneau> rechercherCreneauxComplet(String specialite, String vi
         }
 
     }
-
+    /**
+     * Récupère les créneaux d’un spécialiste pour une journée donnée.
+     *
+     * @param idSpecialiste identifiant du spécialiste
+     * @param date jour ciblé
+     * @return liste des créneaux
+     */
     public List<Creneau> getCreneauxPourJour(int idSpecialiste, LocalDate date) {
         List<Creneau> creneaux
                 = new ArrayList<>();
@@ -401,6 +430,14 @@ public      List<Creneau> rechercherCreneauxComplet(String specialite, String vi
 
         return creneaux;
              }
+    /**
+     * Récupère tous les rendez-vous d’un utilisateur, avec possibilité de filtrer à venir ou passés.
+     *
+     * @param idUtilisateur identifiant de l'utilisateur
+     * @param role rôle (patient ou spécialiste)
+     * @param aVenir vrai si on veut les rendez-vous futurs, faux sinon
+     * @return liste des descriptions textuelles des rendez-vous
+     */
     public       List<String> getRendezVousPourUtilisateur(int idUtilisateur, String role, boolean aVenir) {
         List<String> resultats = new ArrayList<>();
 
@@ -477,7 +514,15 @@ public      List<Creneau> rechercherCreneauxComplet(String specialite, String vi
         }
     }
 
-
+    /**
+     * Récupère les rendez-vous d’un utilisateur avec les identifiants associés.
+     *
+     * @param idUtilisateur identifiant de l'utilisateur
+     * @param role rôle de l'utilisateur (patient ou spécialiste)
+     * @param aVenir vrai pour les rendez-vous futurs, faux sinon
+     * @param mapIdRdv carte associant description → identifiant rendez-vous
+     * @return liste des lignes de rendez-vous
+     */
 
     public       List<String>         getRendezVousPourUtilisateurAvecId(int idUtilisateur, String role, boolean aVenir, Map<String, Integer> mapIdRdv) {
         List<String> resultats = new ArrayList<>();
@@ -538,6 +583,12 @@ public      List<Creneau> rechercherCreneauxComplet(String specialite, String vi
         return resultats;
     }
 
+    /**
+     * Récupère l’avis laissé pour un rendez-vous donné.
+     *
+     * @param idRendezVous identifiant du rendez-vous
+     * @return l'avis, ou {@code null} si inexistant
+     */
 
     public Avis getAvisPourRendezVous(int idRendezVous) {
 
@@ -577,6 +628,12 @@ public      List<Creneau> rechercherCreneauxComplet(String specialite, String vi
         }
         return 0.0;
     }
+    /**
+     * Récupère tous les commentaires laissés pour un spécialiste.
+     *
+     * @param idSpecialiste identifiant du spécialiste
+     * @return liste des commentaires
+     */
     public   List<String> getCommentairesPourSpecialiste(int idSpecialiste) {
          List<String> commentaires = new ArrayList<>();
 

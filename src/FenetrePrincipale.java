@@ -27,7 +27,19 @@ import org.jfree.chart.plot.PlotOrientation;
 
 import org.jfree.data.category.DefaultCategoryDataset;
 import Modele.Avis;
-
+/**
+ * Fenêtre principale de l'application S.P.A.M après connexion de l'utilisateur.
+ * Affiche une interface multi-onglets permettant :
+ * - de prendre un rendez-vous,
+ * - de consulter ses rendez-vous,
+ * - d'accéder à la recherche ou à son compte,
+ * - d'accéder à des outils d'administration si l'utilisateur est un administrateur.
+ *
+ * Cette fenêtre adapte son contenu selon le rôle de l'utilisateur (patient, spécialiste, ou admin).
+ *
+ * @author Stanislas
+ * @version 1.0
+ */
 public class FenetrePrincipale extends JFrame {
 
     private CardLayout cardLayout;
@@ -47,10 +59,20 @@ public class FenetrePrincipale extends JFrame {
     //private CreneauDAO creneauDAO;
 
 
-
     private String roleUtilisateurConnecte;
 
     private JComboBox<Utilisateur> comboSpecialistes;
+    /**
+     * Constructeur de la fenêtre principale.
+     *
+     * @param nom Nom de l'utilisateur connecté
+     * @param prenom Prénom de l'utilisateur connecté
+     * @param email Email de l'utilisateur
+     * @param role Rôle (patient, specialiste, admin)
+     * @param specialisation Spécialisation (si applicable)
+     * @param idUtilisateur Identifiant utilisateur
+     */
+
     public FenetrePrincipale(String nom, String prenom, String email, String role, String specialisation, int idUtilisateur) {
     //    this.idUtilisateurConnecte = idUtilisateur;
         this.idUtilisateurConnecte = idUtilisateur;
@@ -385,7 +407,13 @@ public class FenetrePrincipale extends JFrame {
 
     return panel;
 }
-        private JPanel createRechercheAdminPanel() {
+    /**
+     * Crée la vue de recherche avancée pour les administrateurs.
+     * Permet de rechercher des patients ou spécialistes et voir leurs créneaux.
+     *
+     * @return JPanel de la vue "Recherche admin"
+     */
+    private JPanel createRechercheAdminPanel() {
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
         panel.setBackground(new Color(245, 250, 255));
@@ -508,7 +536,12 @@ public class FenetrePrincipale extends JFrame {
 
 
 
-
+    /**
+     * Crée le panneau de prise de rendez-vous selon le rôle.
+     * Affiche les créneaux disponibles, les graphiques (admin), et les boutons de navigation.
+     *
+     * @return JPanel de la vue "Prendre rendez-vous"
+     */
     public JPanel createPrendreRDVPanel() {
         JPanel panel = new JPanel(new BorderLayout());
 
@@ -1016,7 +1049,11 @@ public class FenetrePrincipale extends JFrame {
         ajoutFrame.add(form);
         ajoutFrame.setVisible(true);
     }
-
+    /**
+     * Crée la vue de recherche de créneaux accessibles à tous.
+     *
+     * @return JPanel de la vue "Recherche"
+     */
     private JPanel createRecherchePanel() {
 
         if (roleUtilisateurConnecte.equalsIgnoreCase("patient")) {
@@ -1055,6 +1092,12 @@ public class FenetrePrincipale extends JFrame {
         panel.add(label, BorderLayout.CENTER);
         return panel;
     }
+    /**
+     * Crée la vue de recherche spécifique pour un spécialiste.
+     * Permet de retrouver un patient ayant déjà pris un rendez-vous.
+     *
+     * @return JPanel de la vue "Recherche spécialiste"
+     */
     private JPanel createRechercheSpecialistePanel() {
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
@@ -1364,6 +1407,15 @@ public class FenetrePrincipale extends JFrame {
     }
 
 
+    /**
+     * Crée et retourne le panneau affichant les rendez-vous de l'utilisateur connecté.
+     * Différencie les vues selon le rôle (admin, spécialiste, patient) :
+     * - Admin : sélection d’un spécialiste et affichage de ses statistiques.
+     * - Spécialiste : liste de ses rendez-vous à venir, moyenne des notes et commentaires.
+     * - Patient : liste de ses rendez-vous à venir ou passés, possibilité de les annuler ou noter.
+     *
+     * @return un JPanel contenant les rendez-vous ou les statistiques correspondantes
+     */
 
     private JPanel createMesRDVPanel() {
         JPanel panel = new JPanel();
@@ -1750,6 +1802,16 @@ public class FenetrePrincipale extends JFrame {
 
         return panel;
     }
+    /**
+     * Affiche dynamiquement les créneaux d’un spécialiste sur une semaine,
+     * du lundi au vendredi, répartis dans une grille (5x5).
+     * Les créneaux passés sont exclus.
+     *
+     * @param idSpecialiste l’ID du spécialiste sélectionné
+     * @param cible le panneau Swing dans lequel injecter les boutons des créneaux
+     * @param dao l’objet CreneauDAO utilisé pour interroger les données
+     */
+
     private void afficherCreneauxSurUneSemaine(int idSpecialiste, JPanel cible, CreneauDAO dao) {
 
         cible.removeAll();
@@ -1818,6 +1880,14 @@ public class FenetrePrincipale extends JFrame {
         cible.repaint();
     }
 
+    /**
+     * Affiche une popup Swing permettant de laisser ou modifier un avis
+     * sur un rendez-vous (note sur 5 et commentaire).
+     *
+     * @param idRdv l’identifiant du rendez-vous concerné
+     * @param description une description affichée en haut de la popup
+     * @param avis l'avis existant (s’il y en a un), ou null pour un nouvel avis
+     */
 
     private void afficherPopupEvaluation(int idRdv, String description, Avis avis) {
         JFrame frame = new JFrame("Avis sur le rendez-vous");

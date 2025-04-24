@@ -1,15 +1,26 @@
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
-
+/**
+ * DAO (Data Access Object) pour la gestion des utilisateurs.
+ * Fournit des méthodes pour accéder, insérer et rechercher des utilisateurs dans la base de données.
+ *  * @author Mathis
+ *  * @version 1.0
+ */
 public class UtilisateurDAO {
     private Connection connection;
-
+    /**
+     * Constructeur initialisant le DAO avec une connexion JDBC.
+     * @param connection Connexion à la base de données
+     */
     public UtilisateurDAO(Connection connection) {
         this.connection = connection;
     }
 
-
+    /**
+     * Récupère tous les spécialistes depuis la base.
+     * @return liste des utilisateurs avec le rôle 'specialiste'
+     */
 
     public List<Utilisateur> getSpecialistes() {
         List<Utilisateur> specialistes = new ArrayList<>();
@@ -45,6 +56,11 @@ public class UtilisateurDAO {
         }
         return specialistes;
     }
+    /**
+     * Recherche des utilisateurs pour un admin selon un critère (nom, email...).
+     * @param critere texte de recherche
+     * @return liste des utilisateurs correspondant au critère
+     */
     public List<Utilisateur> chercherParCritereAdmin(String critere) throws SQLException {
 
 
@@ -87,7 +103,12 @@ public class UtilisateurDAO {
 
 
 
-
+    /**
+     * Recherche les patients ayant eu des rendez-vous avec un spécialiste donné.
+     * @param idSpecialiste ID du spécialiste connecté
+     * @param critere critère de recherche
+     * @return liste de patients
+     */
     public List<Utilisateur> chercherPatientsPourSpecialiste(int idSpecialiste, String critere) {
         List<Utilisateur> liste = new ArrayList<>();
 
@@ -143,7 +164,10 @@ public class UtilisateurDAO {
 
 
 
-
+    /**
+     * Récupère toutes les spécialités distinctes des spécialistes.
+     * @return liste des spécialités
+     */
     public List<String> getSpecialitesDisponibles() throws SQLException {
         List<String> specialites = new ArrayList<>();
         String sql = "SELECT DISTINCT specialisation FROM utilisateur WHERE role = 'specialiste' AND specialisation IS NOT NULL";
@@ -157,6 +181,10 @@ public class UtilisateurDAO {
 
         return      specialites;
     }
+    /**
+     * Récupère toutes les villes disponibles où exercent les spécialistes.
+     * @return liste des villes
+     */
     public      List<String> getVillesDisponibles() throws SQLException {
             List<String> villes = new ArrayList<>();
 

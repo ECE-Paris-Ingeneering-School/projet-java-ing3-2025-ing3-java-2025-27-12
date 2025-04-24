@@ -1,8 +1,20 @@
 import javax.swing.*;
 import java.awt.*;
 import java.sql.*;
-
+/**
+ * Fenêtre de connexion de l'application.
+ * Permet aux utilisateurs de se connecter avec leur adresse e-mail et leur mot de passe.
+ * En cas de succès, redirige vers la fenêtre principale.
+ * Affiche une alerte en cas d'échec d'identification.
+ *
+ * @author Mathis
+ * @version 1.0
+ */
 public class FenetreConnexion extends JFrame {
+    /**
+     * Constructeur de la fenêtre de connexion.
+     * Initialise les champs de saisie, les boutons, et la logique de connexion.
+     */
     public FenetreConnexion() {
             setTitle("Connexion");
         setSize(800, 400);

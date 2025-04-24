@@ -3,9 +3,19 @@ import java.awt.*;
 import java.awt.event.*;
 import java.sql.Connection;
 import java.util.List;
-
+/**
+ * Fenêtre d'accueil de l'application S.P.A.M.
+ * Affiche une page d'accueil avec une présentation du service et une liste des spécialistes disponibles.
+ * Accessible sans connexion.
+ *
+ * @author Arthur
+ * @version 1.0
+ */
 public class FenetreAccueil extends JFrame {
-
+    /**
+     * Constructeur de la fenêtre d'accueil.
+     * Initialise les composants Swing, affiche les spécialistes et met en place le menu supérieur.
+     */
     public FenetreAccueil() {
         setTitle("S.P.A.M - Accueil");
         setSize(1000, 700);
@@ -192,6 +202,11 @@ public class FenetreAccueil extends JFrame {
 
         setVisible(true);
     }
+    /**
+     * Méthode principale pour exécuter l'application en affichant cette fenêtre.
+     *
+     * @param args arguments de la ligne de commande (non utilisés)
+     */
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(FenetreAccueil::new);
